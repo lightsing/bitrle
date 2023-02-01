@@ -7,14 +7,18 @@ pub struct DeRle<W> {
     buf: u8,
     bit_len: u8,
     writer: W,
+    size: usize,
+    out_counter: usize,
 }
 
 impl<W: io::Write> DeRle<W> {
-    pub fn new(writer: W) -> DeRle<W> {
+    pub fn new(writer: W, size: usize) -> DeRle<W> {
         DeRle {
             buf: 0,
             bit_len: 0,
             writer,
+            size,
+            out_counter: 0,
         }
     }
 
@@ -36,7 +40,7 @@ impl<W: io::Write> DeRle<W> {
                     self.buf &= ((1 << self.bit_len) - 1) << take;
                 }
                 trace!("decode: 0x{:02X}", self.buf);
-                self.writer.write_all(&[self.buf])?;
+                self.may_write(self.buf)?;
                 self.buf = 0;
                 self.bit_len = 0;
             }
@@ -45,10 +49,10 @@ impl<W: io::Write> DeRle<W> {
             for _ in 0..bytes {
                 if is_one {
                     trace!("decode: 0xFF");
-                    self.writer.write_all(&[0xFF])?;
+                    self.may_write(0xFF)?;
                 } else {
                     trace!("decode: 0x00");
-                    self.writer.write_all(&[0])?;
+                    self.may_write(0)?;
                 }
             }
             let rem = length % 8;
@@ -75,8 +79,8 @@ impl<W: io::Write> DeRle<W> {
                 let mask = (1 << offset) - 1;
                 let enc = enc & mask;
 
-                self.writer
-                    .write_all(&[self.buf, (enc >> (offset - 8)) as u8])?;
+                self.may_write(self.buf)?;
+                self.may_write((enc >> (offset - 8)) as u8)?;
                 self.buf = 0;
                 self.bit_len = 0;
 
@@ -87,7 +91,7 @@ impl<W: io::Write> DeRle<W> {
                     self.bit_len = offset;
                 }
             } else {
-                self.writer.write_all(&[(enc >> 7) as u8])?;
+                self.may_write((enc >> 7) as u8)?;
                 debug_assert_eq!(self.buf, 0);
                 self.buf = ((enc & 0x7F) << 1) as u8;
                 self.bit_len = 7;
@@ -100,8 +104,18 @@ impl<W: io::Write> DeRle<W> {
     pub fn finalize(mut self) -> io::Result<()> {
         debug_assert_eq!(self.buf << self.bit_len, 0);
         if self.bit_len != 0 {
-            self.writer.write_all(&[self.buf])?;
+            self.may_write(self.buf)?;
         }
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn may_write(&mut self, data: u8) -> io::Result<()> {
+        if self.out_counter >= self.size {
+            return Ok(());
+        }
+        self.writer.write_all(&[data])?;
+        self.out_counter += 1;
         Ok(())
     }
 }

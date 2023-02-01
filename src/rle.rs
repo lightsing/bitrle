@@ -23,6 +23,7 @@ impl<W: io::Write> Rle<W> {
         }
     }
 
+    #[inline(always)]
     pub fn update(&mut self, byte: u8) -> io::Result<()> {
         trace!("update byte {byte:b}");
         trace!("current status {:?}", self.status);
@@ -100,19 +101,20 @@ impl<W: io::Write> Rle<W> {
                     is_one,
                     counter: new_counter,
                 };
+                trace!("transit to {:?}", self.status);
 
-                if repeats != 8 {
+                let read_len = new_counter - counter;
+                trace!("read_len: {read_len}");
+                if read_len != 8 {
                     // ends here
-                    trace!("transit to {:?}", self.status);
                     self.writer.write(&self.status.try_encode().unwrap())?;
 
-                    if repeats == 0 {
+                    if read_len == 0 {
                         self.status = RleStatus::Any;
                         trace!("transit to {:?}, refeed", self.status);
                         return self.update(byte);
                     }
 
-                    let read_len = new_counter - counter;
                     let unread_len = 8 - read_len;
                     trace!("unread_len: {unread_len}");
                     if unread_len == 0 {
@@ -125,6 +127,14 @@ impl<W: io::Write> Rle<W> {
                 Ok(())
             }
             RleStatus::NonRLE { mut buf, len } => {
+                // handle transit from MayRLE with full buffer
+                if len == NON_RLE_ENCODE_BITS as u8 {
+                    self.writer.write(&self.status.try_encode().unwrap())?;
+                    self.status = RleStatus::Any;
+                    trace!("transit to {:?}", self.status);
+                    return self.update(byte);
+                }
+
                 let mut new_len = len + 8;
                 trace!("new_len: {new_len}");
                 if new_len > NON_RLE_ENCODE_BITS as u8 {
@@ -157,6 +167,7 @@ impl<W: io::Write> Rle<W> {
         }
     }
 
+    #[inline(always)]
     fn transit_uncompleted(&mut self, byte: u8, unread_len: u8) {
         let mask = (1 << unread_len) - 1;
         let byte = byte & mask;
@@ -193,6 +204,7 @@ impl<W: io::Write> Rle<W> {
 }
 
 impl RleStatus {
+    #[inline(always)]
     fn try_encode(self) -> Option<[u8; 2]> {
         match self {
             RleStatus::Any => None,
@@ -214,6 +226,7 @@ impl RleStatus {
     }
 
     // converting MayRLE to NonRLE
+    #[inline(always)]
     fn finalize(self) -> Self {
         match self {
             RleStatus::MayRLE { is_one, counter } => {

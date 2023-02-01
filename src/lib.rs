@@ -25,7 +25,7 @@
 //! since we won't use RLE when there's less than 15 bits to encode,
 //! the actual bits encoded will be N + 16.
 //!
-//! Thus, in best case, 2 bytes can encode 2^14 + 16 (16400) bits (actually 16399, see below),
+//! Thus, in best case, 2 bytes can encode 2^14 + 16 - 1 (16399) bits (actually 16398, see below),
 //! efficiency is ~1024.
 //! In worst case, 2 bytes can encode 15 bits, efficiency is 0.9375.
 //!
@@ -60,4 +60,4 @@ pub use rle::{Rle, RleStatus};
 /// how many bits will be encoded
 const NON_RLE_ENCODE_BITS: u16 = 2 * 8 - 1;
 const MIN_RLE_ENCODE_BITS: u16 = 2 * 8;
-const MAX_RLE_ENCODE_BITS: u16 = (1 << 14) + MIN_RLE_ENCODE_BITS;
+const MAX_RLE_ENCODE_BITS: u16 = 0b11111111111110 + MIN_RLE_ENCODE_BITS;

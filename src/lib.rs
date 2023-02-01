@@ -50,6 +50,7 @@
 //! Any malformed frame will be discarded.
 //!
 //! Total 4 bytes overhead of each frame is introduced.
+#![allow(clippy::upper_case_acronyms)]
 
 #[macro_use]
 extern crate log;
@@ -58,7 +59,7 @@ mod rle;
 mod derle;
 
 pub use rle::Rle;
-pub use derle::Derle;
+pub use derle::DeRle;
 
 /// how many bits will be encoded
 const NON_RLE_ENCODE_BITS: u16 = 2 * 8 - 1;

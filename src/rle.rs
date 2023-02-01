@@ -8,7 +8,7 @@ pub struct Rle<W> {
 }
 
 #[derive(Copy, Clone)]
-pub enum RleStatus {
+enum RleStatus {
     RLE { is_one: bool, counter: u16 },
     MayRLE { is_one: bool, counter: u16 },
     NonRLE { buf: u16, len: u8 },

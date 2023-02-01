@@ -55,7 +55,10 @@
 extern crate log;
 
 mod rle;
-pub use rle::{Rle, RleStatus};
+mod derle;
+
+pub use rle::Rle;
+pub use derle::Derle;
 
 /// how many bits will be encoded
 const NON_RLE_ENCODE_BITS: u16 = 2 * 8 - 1;
